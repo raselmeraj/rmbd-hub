@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Segoe UI', 'Nirmala UI', sans-serif;
+  background: #f0f2f5;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
