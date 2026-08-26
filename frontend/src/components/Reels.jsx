@@ -1,0 +1,1 @@
+export default function Reels(){return <div>Reels Coming Soon</div>}

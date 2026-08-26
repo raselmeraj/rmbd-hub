@@ -1,0 +1,1 @@
+export default function Story(){return <div>Stories - 24hr</div>}
