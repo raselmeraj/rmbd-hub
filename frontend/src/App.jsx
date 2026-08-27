@@ -9,7 +9,7 @@ export default function App() {
   const [text, setText] = useState('');
   const [img, setImg] = useState('');
   const [showProfile, setShowProfile] = useState(null);
-  const [cmt, setCmt] = useState({});
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   useEffect(() => {
     if (localStorage.getItem('isLoggedIn') === 'true') setIsLoggedIn(true);
@@ -17,7 +17,6 @@ export default function App() {
     return onValue(postsRef, (snap) => {
       const data = snap.val();
       if (!data) { setPosts([]); return; }
-      // সব Post - কোনো Filter ছাড়া, সবাই সবার Post দেখবে
       const arr = Object.entries(data).map(([id, val]) => ({...val, id}));
       arr.sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
       setPosts(arr);
@@ -35,10 +34,22 @@ export default function App() {
   };
 
   const doPost = () => {
-    if(!text.trim() &&!img) return;
+    if(!text.trim() && !img) return;
     const nr = push(ref(db, 'posts'));
     set(nr, { text, image: img, author: currentUser.name, authorEmail: currentUser.email, authorAvatar: currentUser.avatar||'', createdAt: Date.now() });
     setText(''); setImg('');
+  };
+
+  const openProfile = (p) => {
+    // যদি নিজের Post হয়
+    if (p.authorEmail === currentUser.email) {
+      setIsOwnProfile(true);
+      setShowProfile(currentUser);
+    } else {
+      // অন্যের Post - অন্যের Profile দেখাও
+      setIsOwnProfile(false);
+      setShowProfile({ name: p.author, email: p.authorEmail, avatar: p.authorAvatar || '' });
+    }
   };
 
   const changeAvatar = (e) => {
@@ -56,50 +67,68 @@ export default function App() {
   if(!isLoggedIn) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen bg-[#e89e9e] p-4 font-sans">
-      <div className="max-w- mx-auto">
-        <div className="flex justify-between items-center mb-4 bg-white/80 p-3 rounded-2xl">
-          <h1 className="font-bold text-">RMBD HUB - LIVE 🔴</h1>
-          <div className="flex items-center gap-2">
-            <button onClick={()=>setShowProfile(currentUser)} className="text- font-bold flex items-center gap-2">{currentUser.avatar && <img src={currentUser.avatar} className="w-7 h-7 rounded-full object-cover" />}{currentUser.name}</button>
-            <button onClick={handleLogout} className="bg-black text-white px-4 py-1.5 rounded-full text-">Logout</button>
+    <div className="min-h-screen bg-[#f0f2f5] font-sans">
+      <div className="bg-white shadow-sm sticky top-0 z-20">
+        <div className="max-w-[600px] mx-auto flex justify-between items-center p-3">
+          <h1 className="font-black text-[22px] text-[#0866ff]">rmbd-hub</h1>
+          <div className="flex items-center gap-3">
+            <button onClick={()=>{ setIsOwnProfile(true); setShowProfile(currentUser); }} className="flex items-center gap-2 text-[13px] font-bold">
+              {currentUser.avatar ? <img src={currentUser.avatar} alt="av" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold">{currentUser.name?.[0]}</div>}
+              {currentUser.name}
+            </button>
+            <button onClick={handleLogout} className="bg-gray-200 px-3 py-1.5 rounded-full text-[11px] font-bold">Logout</button>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded- p-4 mb-4">
-          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="What's on your mind, Rasel?" className="w-full bg-[#f5f5f5] rounded-xl p-3 text- outline-none min-h-" />
-          {img && <img src={img} className="mt-3 rounded-xl w-full max-h- object-cover" />}
-          <div className="flex justify-between items-center mt-3">
-            <label className="text- bg-[#f5f5f5] px-3 py-2 rounded-full cursor-pointer">📷 Photo <input type="file" accept="image/*" onChange={onImg} className="hidden" /></label>
-            <button onClick={doPost} className="bg-black text-white px-8 py-2.5 rounded-full text- font-bold">Post</button>
+      <div className="max-w-[600px] mx-auto p-3">
+        <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+          <div className="flex gap-3">
+            {currentUser.avatar ? <img src={currentUser.avatar} alt="av" className="w-10 h-10 rounded-full object-cover" /> : <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold">{currentUser.name?.[0]}</div>}
+            <textarea value={text} onChange={e=>setText(e.target.value)} placeholder={`What's on your mind, ${currentUser.name}?`} className="flex-1 bg-[#f0f2f5] rounded-2xl p-3 text-[15px] outline-none min-h-[50px] resize-none" />
+          </div>
+          {img && <img src={img} alt="preview" className="mt-3 rounded-xl w-full max-h-[350px] object-cover" />}
+          <div className="flex justify-between items-center mt-3 pt-3 border-t">
+            <label className="text-[13px] font-bold text-gray-500 px-3 py-2 rounded-lg hover:bg-gray-100 cursor-pointer">📷 Photo <input type="file" accept="image/*" onChange={onImg} className="hidden" /></label>
+            <button onClick={doPost} className="bg-[#0866ff] text-white px-6 py-2 rounded-full text-[14px] font-bold">Post</button>
           </div>
         </div>
-
-        <p className="text- mb-2 opacity-60 text-center">{posts.length} Posts - সবাই সবার Post দেখতে পারবে</p>
 
         {posts.map(p=>(
-          <div key={p.id} className="bg-white rounded- p-4 mb-3">
-            <div className="flex items-center gap-2">
-              {p.authorAvatar? <img src={p.authorAvatar} className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 bg-[#e89e9e] rounded-full flex items-center justify-center text- font-bold">{p.author?.[0]}</div>}
-              <div><p className="text- font-bold">{p.author}</p><p className="text- opacity-50">{new Date(p.createdAt||Date.now()).toLocaleString()}</p></div>
+          <div key={p.id} className="bg-white rounded-xl p-4 mb-3 shadow-sm">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={()=>openProfile(p)}>
+              {p.authorAvatar? <img src={p.authorAvatar} alt="av" className="w-10 h-10 rounded-full object-cover" /> : <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold">{p.author?.[0]}</div>}
+              <div>
+                <p className="text-[14px] font-bold hover:underline">{p.author}</p>
+                <p className="text-[11px] text-gray-500">{new Date(p.createdAt||Date.now()).toLocaleDateString()}</p>
+              </div>
             </div>
-            <p className="text- mt-3">{p.text}</p>
-            {p.image && <img src={p.image} className="mt-3 rounded-xl w-full object-cover" />}
+            {p.text && <p className="text-[15px] mt-3 leading-snug">{p.text}</p>}
+            {p.image && <img src={p.image} alt="post" className="mt-3 rounded-xl w-full object-cover max-h-[500px]" />}
           </div>
         ))}
 
-        {showProfile && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={()=>setShowProfile(null)}>
-            <div className="bg-white rounded- p-6 w-full max-w- text-center" onClick={e=>e.stopPropagation()}>
-              {showProfile.avatar? <img src={showProfile.avatar} className="w-24 h-24 rounded-full mx-auto object-cover border-2 border-black" /> : <div className="w-24 h-24 bg-[#e89e9e] rounded-full mx-auto flex items-center justify-center text-3xl font-bold">{showProfile.name?.[0]}</div>}
-              <h2 className="font-bold mt-3">{showProfile.name}</h2>
-              <p className="text- opacity-60">{showProfile.email}</p>
-              <label className="block mt-5 bg-black text-white px-5 py-2.5 rounded-full text- font-bold cursor-pointer">📷 Change Photo<input type="file" accept="image/*" onChange={changeAvatar} className="hidden" /></label>
-              <button onClick={()=>setShowProfile(null)} className="mt-3 w-full bg-[#f5f5f5] py-2.5 rounded-full text- font-bold">Close</button>
-            </div>
-          </div>
-        )}
+        {posts.length===0 && <p className="text-center text-gray-500 mt-10 text-sm">No posts yet. Be the first to post!</p>}
       </div>
+
+      {showProfile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={()=>setShowProfile(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[350px] text-center" onClick={e=>e.stopPropagation()}>
+            {showProfile.avatar? <img src={showProfile.avatar} alt="av" className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-white shadow-lg" /> : <div className="w-24 h-24 bg-[#0866ff] rounded-full mx-auto flex items-center justify-center text-3xl font-bold text-white">{showProfile.name?.[0]}</div>}
+            <h2 className="font-bold mt-4 text-[20px]">{showProfile.name}</h2>
+            <p className="text-[12px] text-gray-500 mt-1">{showProfile.email}</p>
+            {isOwnProfile ? (
+              <>
+                <label className="block mt-5 bg-[#0866ff] text-white px-5 py-2.5 rounded-full text-[13px] font-bold cursor-pointer">📷 Change Profile Photo<input type="file" accept="image/*" onChange={changeAvatar} className="hidden" /></label>
+                <p className="text-[10px] text-gray-400 mt-2">Click to change your photo</p>
+              </>
+            ) : (
+              <p className="text-[12px] text-gray-500 mt-4 bg-gray-100 p-2 rounded-lg">This is {showProfile.name}'s profile</p>
+            )}
+            <button onClick={()=>setShowProfile(null)} className="mt-4 w-full bg-gray-200 py-2.5 rounded-full text-[13px] font-bold">Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
