@@ -16,7 +16,6 @@ export default function App() {
       if (data) {
         const arr = Object.keys(data).map(k => ({...data[k], id: k}));
         arr.sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
-        // খালি post filter
         setPosts(arr.filter(p => p.text && p.text.trim()!== ''));
       } else {
         setPosts([]);
@@ -39,33 +38,36 @@ export default function App() {
   const handlePost = () => {
     if (!text.trim()) return;
     const r = push(ref(db, 'posts'));
-    const user = JSON.parse(localStorage.getItem('currentUser') || '{"name":"Rasel Miah"}');
-    set(r, { text, author: user.name || 'Rasel Miah', createdAt: Date.now() });
+    const u = JSON.parse(localStorage.getItem('currentUser') || '{"name":"Rasel Miah"}');
+    set(r, { text, author: u.name || 'Rasel Miah', createdAt: Date.now() });
     setText('');
   };
 
   if (!isLoggedIn) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen bg-[#e89e9e] p-4">
+    <div className="min-h-screen bg-[#e89e9e] p-4 font-sans">
       <div className="max-w- mx-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="font-bold text-lg">RMBD HUB - LIVE 🔴</h1>
-          <button onClick={handleLogout} className="bg-black text-white px-5 py-2 rounded-full text-xs font-bold">Logout</button>
+        <div className="flex justify-between items-center mb-5 bg-white/50 backdrop-blur p-3 rounded-2xl">
+          <h1 className="font-bold text-">RMBD HUB - LIVE 🔴</h1>
+          <button onClick={handleLogout} className="bg-black text-white px-5 py-2 rounded-full text- font-bold">Logout</button>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 mb-4 shadow">
-          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="What's on your mind?" className="w-full bg-gray-100 rounded-xl p-3 text-sm outline-none min-h-" />
-          <button onClick={handlePost} className="mt-3 w-full bg-black text-white rounded-full py-2.5 text-sm font-bold">Post</button>
+        <div className="bg-white rounded- p-4 shadow-sm mb-5">
+          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="What's on your mind?" className="w-full bg-[#f5f5f5] rounded-xl p-3.5 text- outline-none min-h- resize-none" />
+          <button onClick={handlePost} className="mt-3 w-full bg-black text-white rounded-full py-3 text- font-bold">Post</button>
         </div>
 
         <div className="space-y-3">
-          {posts.map(p=>(
-            <div key={p.id} className="bg-white rounded-2xl p-4 shadow">
-              <p className="text-xs font-bold opacity-60">{p.author}</p>
-              <p className="text-sm mt-1">{p.text}</p>
+          {posts.length > 0? posts.map(p=>(
+            <div key={p.id} className="bg-white rounded- p-4 shadow-sm">
+              <p className="text- font-bold opacity-50">{p.author}</p>
+              <p className="text- mt-2 leading-snug">{p.text}</p>
+              <div className="flex gap-4 mt-3 pt-3 border-t border-black/5 text- opacity-60">
+                <span>❤️ Like</span><span>💬 Comment</span><span>↗️ Share</span>
+              </div>
             </div>
-          ))}
+          )) : <p className="text-center text-sm mt-10 opacity-60">No posts yet. Be the first!</p>}
         </div>
       </div>
     </div>
