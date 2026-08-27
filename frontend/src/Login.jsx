@@ -64,11 +64,10 @@ export default function Login({ onLogin }) {
                 <label className="w-full border border-dashed border-gray-300 p-2.5 rounded-lg bg-[#f5f6f7] text-[13px] text-center block cursor-pointer">📷 Profile Photo <input type="file" accept="image/*" onChange={handleAvatar} className="hidden" /></label>
               </>
             )}
-            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" required className="w-full border border-gray-300 p-3.5 rounded-lg bg-[#f5f6f7] focus:outline-none focus:border-blue-500 text-[15px]" />
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address or phone" required className="w-full border border-gray-300 p-3.5 rounded-lg bg-[#f5f6f7] focus:outline-none focus:border-blue-500 text-[15px]" />
             <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" type="password" required className="w-full border border-gray-300 p-3.5 rounded-lg bg-[#f5f6f7] focus:outline-none focus:border-blue-500 text-[15px]" />
             <button type="submit" className="w-full bg-[#0866ff] hover:bg-[#075eec] text-white py-3 rounded-lg font-bold text-[18px] transition">{isLogin ? 'Log in' : 'Create Account'}</button>
           </form>
-          <p className="text-center text-[11px] text-gray-500 mt-4">Your Facebook is Live! 🔴</p>
         </div>
       </div>
     </div>
