@@ -3,10 +3,6 @@ import { db } from './firebase';
 import { ref, onValue, push, set } from 'firebase/database';
 import Login from './Login.jsx';
 
-function safeKey(email) {
-  return email.replace(/[^a-zA-Z0-9]/g, '_');
-}
-
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [posts, setPosts] = useState([]);
@@ -17,125 +13,89 @@ export default function App() {
 
   useEffect(() => {
     if (localStorage.getItem('isLoggedIn') === 'true') setIsLoggedIn(true);
-    const r = ref(db, 'posts');
-    return onValue(r, (snap) => {
-      const d = snap.val();
-      if (!d) { setPosts([]); return; }
-      const arr = Object.keys(d).map(k => ({...d[k], id: k, likes: d[k].likes || {}, comments: d[k].comments || {} }));
-      arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      setPosts(arr.filter(p => p.text || p.image));
+    const postsRef = ref(db, 'posts');
+    return onValue(postsRef, (snap) => {
+      const data = snap.val();
+      if (!data) { setPosts([]); return; }
+      // সব Post - কোনো Filter ছাড়া, সবাই সবার Post দেখবে
+      const arr = Object.entries(data).map(([id, val]) => ({...val, id}));
+      arr.sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+      setPosts(arr);
     });
   }, []);
 
   const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name":"Rasel Miah","email":"user@rmbd.com","avatar":""}');
 
-  const onLogin = () => { localStorage.setItem('isLoggedIn', 'true'); setIsLoggedIn(true); };
-  const onLogout = () => { localStorage.removeItem('isLoggedIn'); setIsLoggedIn(false); window.location.reload(); };
+  const handleLogin = () => { localStorage.setItem('isLoggedIn','true'); setIsLoggedIn(true); };
+  const handleLogout = () => { localStorage.removeItem('isLoggedIn'); setIsLoggedIn(false); location.reload(); };
 
   const onImg = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setImg(ev.target.result);
-    reader.readAsDataURL(f);
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader(); r.onload = ev => setImg(ev.target.result); r.readAsDataURL(f);
   };
 
   const doPost = () => {
-    if (!text.trim() &&!img) return;
-    const newRef = push(ref(db, 'posts'));
-    set(newRef, { text, image: img, author: currentUser.name, authorEmail: currentUser.email, authorAvatar: currentUser.avatar || '', likes: {}, comments: {}, createdAt: Date.now() });
+    if(!text.trim() &&!img) return;
+    const nr = push(ref(db, 'posts'));
+    set(nr, { text, image: img, author: currentUser.name, authorEmail: currentUser.email, authorAvatar: currentUser.avatar||'', createdAt: Date.now() });
     setText(''); setImg('');
   };
 
-  const doLike = (p) => {
-    const key = safeKey(currentUser.email);
-    const has = p.likes && p.likes[key];
-    const likeRef = ref(db, `posts/${p.id}/likes/${key}`);
-    if (has) { set(likeRef, null); } else { set(likeRef, { name: currentUser.name }); }
-  };
-
-  const doComment = (p) => {
-    const t = cmt[p.id];
-    if (!t ||!t.trim()) return;
-    const cr = push(ref(db, `posts/${p.id}/comments`));
-    set(cr, { text: t, author: currentUser.name });
-    setCmt({...cmt, [p.id]: '' });
-  };
-
   const changeAvatar = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
       const newAv = ev.target.result;
-      const users = JSON.parse(localStorage.getItem('rmbd_users') || '[]');
-      const idx = users.findIndex(u => u.email === currentUser.email);
-      if (idx >= 0) {
-        users[idx].avatar = newAv;
-        localStorage.setItem('rmbd_users', JSON.stringify(users));
-        const cu = {...currentUser, avatar: newAv };
-        localStorage.setItem('currentUser', JSON.stringify(cu));
-        setShowProfile(cu);
-        window.location.reload();
-      }
+      const users = JSON.parse(localStorage.getItem('rmbd_users')||'[]');
+      const idx = users.findIndex(u=>u.email===currentUser.email);
+      if(idx>=0){ users[idx].avatar=newAv; localStorage.setItem('rmbd_users', JSON.stringify(users)); localStorage.setItem('currentUser', JSON.stringify({...currentUser, avatar:newAv})); location.reload(); }
     };
-    reader.readAsDataURL(f);
+    r.readAsDataURL(f);
   };
 
-  if (!isLoggedIn) return <Login onLogin={onLogin} />;
+  if(!isLoggedIn) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className="min-h-screen bg-[#e89e9e] p-4">
+    <div className="min-h-screen bg-[#e89e9e] p-4 font-sans">
       <div className="max-w- mx-auto">
-        <div className="flex justify-between items-center mb-4 bg-white/70 p-3 rounded-2xl">
+        <div className="flex justify-between items-center mb-4 bg-white/80 p-3 rounded-2xl">
           <h1 className="font-bold text-">RMBD HUB - LIVE 🔴</h1>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowProfile(currentUser)} className="text- font-bold underline">{currentUser.name}</button>
-            <button onClick={onLogout} className="bg-black text-white px-4 py-1.5 rounded-full text-">Logout</button>
+            <button onClick={()=>setShowProfile(currentUser)} className="text- font-bold flex items-center gap-2">{currentUser.avatar && <img src={currentUser.avatar} className="w-7 h-7 rounded-full object-cover" />}{currentUser.name}</button>
+            <button onClick={handleLogout} className="bg-black text-white px-4 py-1.5 rounded-full text-">Logout</button>
           </div>
         </div>
 
         <div className="bg-white rounded- p-4 mb-4">
-          <textarea value={text} onChange={e => setText(e.target.value)} placeholder="What's on your mind?" className="w-full bg-[#f5f5f5] rounded-xl p-3 text- outline-none min-h-" />
-          {img && <img src={img} alt="preview" className="mt-3 rounded-xl w-full max-h- object-cover" />}
+          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="What's on your mind, Rasel?" className="w-full bg-[#f5f5f5] rounded-xl p-3 text- outline-none min-h-" />
+          {img && <img src={img} className="mt-3 rounded-xl w-full max-h- object-cover" />}
           <div className="flex justify-between items-center mt-3">
             <label className="text- bg-[#f5f5f5] px-3 py-2 rounded-full cursor-pointer">📷 Photo <input type="file" accept="image/*" onChange={onImg} className="hidden" /></label>
             <button onClick={doPost} className="bg-black text-white px-8 py-2.5 rounded-full text- font-bold">Post</button>
           </div>
         </div>
 
-        {posts.map(p => (
+        <p className="text- mb-2 opacity-60 text-center">{posts.length} Posts - সবাই সবার Post দেখতে পারবে</p>
+
+        {posts.map(p=>(
           <div key={p.id} className="bg-white rounded- p-4 mb-3">
             <div className="flex items-center gap-2">
-              {p.authorAvatar? <img src={p.authorAvatar} alt="av" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 bg-[#e89e9e] rounded-full flex items-center justify-center text- font-bold">{p.author?.[0]}</div>}
-              <p onClick={() => setShowProfile({ name: p.author, email: p.authorEmail, avatar: p.authorAvatar })} className="text- font-bold cursor-pointer hover:underline">{p.author}</p>
+              {p.authorAvatar? <img src={p.authorAvatar} className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 bg-[#e89e9e] rounded-full flex items-center justify-center text- font-bold">{p.author?.[0]}</div>}
+              <div><p className="text- font-bold">{p.author}</p><p className="text- opacity-50">{new Date(p.createdAt||Date.now()).toLocaleString()}</p></div>
             </div>
-            <p className="text- mt-2">{p.text}</p>
-            {p.image && <img src={p.image} alt="post" className="mt-3 rounded-xl w-full max-h- object-cover" />}
-            <div className="flex gap-5 mt-3 pt-3 border-t text-">
-              <button onClick={() => doLike(p)} className={p.likes && p.likes[safeKey(currentUser.email)]? 'text-red-500 font-bold' : 'opacity-60'}>❤️ Like ({Object.keys(p.likes || {}).length})</button>
-              <span className="opacity-60">💬 {Object.keys(p.comments || {}).length}</span>
-            </div>
-            <div className="mt-3">
-              {Object.values(p.comments || {}).map((cc, i) => <p key={i} className="text- bg-[#f5f5f5] rounded-full px-3 py-1.5 mt-1"><b>{cc.author}:</b> {cc.text}</p>)}
-              <div className="flex gap-2 mt-2">
-                <input value={cmt[p.id] || ''} onChange={e => setCmt({...cmt, [p.id]: e.target.value })} placeholder="Write a comment..." className="flex-1 bg-[#f5f5f5] rounded-full px-3 py-1.5 text- outline-none" />
-                <button onClick={() => doComment(p)} className="bg-black text-white px-4 rounded-full text-">Send</button>
-              </div>
-            </div>
+            <p className="text- mt-3">{p.text}</p>
+            {p.image && <img src={p.image} className="mt-3 rounded-xl w-full object-cover" />}
           </div>
         ))}
 
         {showProfile && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowProfile(null)}>
-            <div className="bg-white rounded-2xl p-6 w-full max-w- text-center" onClick={e => e.stopPropagation()}>
-              {showProfile.avatar? <img src={showProfile.avatar} alt="av" className="w-20 h-20 rounded-full mx-auto object-cover" /> : <div className="w-20 h-20 bg-[#e89e9e] rounded-full mx-auto flex items-center justify-center text-2xl font-bold">{showProfile.name?.[0]}</div>}
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={()=>setShowProfile(null)}>
+            <div className="bg-white rounded- p-6 w-full max-w- text-center" onClick={e=>e.stopPropagation()}>
+              {showProfile.avatar? <img src={showProfile.avatar} className="w-24 h-24 rounded-full mx-auto object-cover border-2 border-black" /> : <div className="w-24 h-24 bg-[#e89e9e] rounded-full mx-auto flex items-center justify-center text-3xl font-bold">{showProfile.name?.[0]}</div>}
               <h2 className="font-bold mt-3">{showProfile.name}</h2>
-              <p className="text- opacity-60 mt-1">{showProfile.email}</p>
-              {showProfile.email === currentUser.email && (
-                <label className="block mt-4 bg-black text-white px-4 py-2 rounded-full text- cursor-pointer">📷 Change Photo<input type="file" accept="image/*" onChange={changeAvatar} className="hidden" /></label>
-              )}
-              <button onClick={() => setShowProfile(null)} className="mt-3 w-full bg-[#f5f5f5] py-2 rounded-full text-xs">Close</button>
+              <p className="text- opacity-60">{showProfile.email}</p>
+              <label className="block mt-5 bg-black text-white px-5 py-2.5 rounded-full text- font-bold cursor-pointer">📷 Change Photo<input type="file" accept="image/*" onChange={changeAvatar} className="hidden" /></label>
+              <button onClick={()=>setShowProfile(null)} className="mt-3 w-full bg-[#f5f5f5] py-2.5 rounded-full text- font-bold">Close</button>
             </div>
           </div>
         )}
